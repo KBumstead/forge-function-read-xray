@@ -111,6 +111,44 @@ Parameters:
 
 The response is the Xray GraphQL result, e.g. `{ "total": 3, "start": 0, "limit": 20, "results": [ ... ] }`.
 
+## Using it in Rovo (connected app tool)
+
+The manifest exposes the reader to Rovo in two parts:
+
+- An **`action`** module (`read-xray-data`, verb `GET`) that runs the Rovo
+  handler in `src/rovo.js`.
+- A **`rovo:mcp`** module (`Xray Reader`) that lists that action as a tool.
+  This is what makes it appear in Rovo Studio under **Connected apps**.
+
+After `forge deploy` and `forge install` (or `forge install --upgrade` if the
+app is already installed) on the NPRD site:
+
+1. Open **Rovo Studio** and create or edit an agent.
+2. Under tools, go to **Connected apps** and pick **Xray Reader**.
+3. Select the **Read Xray test data** tool and click **Add**.
+
+Then ask the agent things like:
+
+- "Show me the steps of test ABC-123"
+- "Which tests failed in test execution ABC-42?"
+- "List the tests in test plan ABC-10"
+- "Find manual tests in project ABC"
+
+Tool inputs (all optional): `type` (`tests`, `testExecutions`, `testPlans`,
+`testSets`), `key`, `jql`, `limit` (default 10 for Rovo), `start`. If neither
+`key` nor `jql` is given and the user is on a Jira issue, that issue is used.
+Results are trimmed to the useful fields (key, summary, status, steps, run
+statuses with per-status counts) so Rovo can summarize them.
+
+Notes:
+
+- `rovo:mcp` is a **Preview** Forge module, so Atlassian may still change it.
+- Rovo must be enabled on the NPRD site.
+- The tool reads Xray with the app's API key, so anyone who can use the agent
+  sees whatever that key's Xray user can see.
+- Using the tool from external MCP clients (outside Rovo) also needs a site
+  admin to turn it on under **Connected apps** in Atlassian Administration.
+
 ## Using the reader from other Forge modules
 
 `src/xrayClient.js` and `src/readXray.js` don't depend on the web trigger. You can
@@ -135,8 +173,9 @@ npx forge tunnel
 ## Project layout
 
 ```
-manifest.yml          Forge modules, egress permissions for the Xray API
-src/index.js          Web trigger handler
+manifest.yml          Forge modules (web trigger, Rovo action, rovo:mcp), Xray egress
+src/index.js          Web trigger + Rovo handlers
+src/rovo.js           Rovo tool: input handling, trims results for Rovo
 src/readXray.js       Reads by type / jql / key, checks the input
 src/xrayClient.js     Xray Cloud auth (token cached) + GraphQL queries
 test/                 Unit tests (node:test, mocked fetch)
