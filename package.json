@@ -1,0 +1,17 @@
+{
+  "name": "forge-function-read-xray",
+  "version": "1.0.0",
+  "description": "Forge function that reads Xray (Cloud) test data from a non-production (NPRD) Jira site",
+  "main": "src/index.js",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "lint": "forge lint"
+  },
+  "dependencies": {
+    "@forge/api": "^8.5.0"
+  },
+  "devDependencies": {
+    "@forge/cli": "^15.1.0"
+  }
+}
