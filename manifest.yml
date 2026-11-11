@@ -1,12 +1,65 @@
 modules:
-  # Core function that reads Xray data. It is exposed through a web trigger so
-  # it can be called from scripts, pipelines or other services.
   function:
+    # Web trigger entry point (scripts, pipelines, other services).
     - key: read-xray
       handler: index.handler
+    # Rovo entry point.
+    - key: read-xray-rovo
+      handler: index.rovoHandler
+
   webtrigger:
     - key: read-xray-webtrigger
       function: read-xray
+
+  # Rovo action. Listing it in the rovo:mcp module below exposes it as a tool,
+  # so it appears in Rovo Studio under "Connected apps" and can be added to
+  # any Rovo agent.
+  action:
+    - key: read-xray-data
+      name: Read Xray test data
+      function: read-xray-rovo
+      actionVerb: GET
+      description: >-
+        Reads Xray test data from Jira: tests (steps, Gherkin), test executions
+        with run status (pass/fail), test plans and test sets. Pass an issue key
+        or JQL; defaults to the current issue.
+      inputs:
+        type:
+          title: Data type
+          type: string
+          required: false
+          description: >-
+            What to read. One of: tests, testExecutions, testPlans, testSets.
+            Default is tests. Use testExecutions for test run results or
+            pass/fail status, testPlans or testSets to list the tests they contain.
+        key:
+          title: Issue key
+          type: string
+          required: false
+          description: A single Jira issue key, for example ABC-123.
+        jql:
+          title: JQL query
+          type: string
+          required: false
+          description: >-
+            JQL that selects the Xray issues, for example
+            project = ABC AND issuetype = Test. Ignored when an issue key is given.
+        limit:
+          title: Max results
+          type: integer
+          required: false
+          description: Maximum number of results to return, 1-100. Default is 10.
+        start:
+          title: Offset
+          type: integer
+          required: false
+          description: Offset for paging through results. Default is 0.
+
+  rovo:mcp:
+    - key: xray-reader-mcp
+      name: Xray Reader
+      tools:
+        - read-xray-data
 
 app:
   id: ari:cloud:ecosystem::app/ece8b991-1555-40b5-8344-59421436d8e6

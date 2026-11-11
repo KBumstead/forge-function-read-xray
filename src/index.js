@@ -1,6 +1,7 @@
 const { fetch } = require('@forge/api');
 const { XrayClient, XrayError, DEFAULT_BASE_URL } = require('./xrayClient');
 const { readXray } = require('./readXray');
+const { rovoReadXray } = require('./rovo');
 
 let client;
 
@@ -79,4 +80,12 @@ async function handler(event) {
   }
 }
 
-module.exports = { handler, readXray, getClient };
+/**
+ * Rovo action handler (also exposed as an MCP tool via the rovo:mcp module,
+ * so it shows up in Rovo Studio under Connected apps).
+ */
+async function rovoHandler(payload) {
+  return rovoReadXray(payload, getClient);
+}
+
+module.exports = { handler, rovoHandler, readXray, getClient };
