@@ -64,10 +64,19 @@ modules:
       tools:
         - read-xray-data
 
-  # Settings page under Jira Settings > Apps. useAsConfig also adds a
-  # "Configure" button for the app on the Manage apps page.
+  # Settings page for the Xray Client ID / Secret. Two entries, same page:
+  #  - the first shows in the Jira Settings > Apps sidebar;
+  #  - the second (useAsConfig) adds a "Configure" button for the app in
+  #    Connected apps / Manage apps. Entries with useAsConfig are NOT shown
+  #    in the sidebar, which is why both are needed.
   jira:adminPage:
     - key: xray-reader-settings
+      title: Xray Reader settings
+      resource: settings-page
+      resolver:
+        function: settings-resolver
+      render: native
+    - key: xray-reader-configure
       title: Xray Reader settings
       resource: settings-page
       resolver:
