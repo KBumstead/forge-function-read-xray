@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import ForgeReconciler, {
   Button,
   ButtonGroup,
-  Heading,
   HelperMessage,
   Label,
   Lozenge,
@@ -84,7 +83,6 @@ const App = () => {
 
   return (
     <Stack space="space.200">
-      <Heading as="h2">Xray Reader settings</Heading>
       <Text>
         Enter the Xray API key created on this Jira site (Apps → Xray → Settings → API Keys). The
         Rovo tool and the web trigger use it to read Xray data.
