@@ -179,8 +179,16 @@ Notes:
 
 Jira admins can manage the Xray credentials inside Jira, without the CLI:
 
-- **Jira Settings → Apps → Xray Reader settings**, or
-- **Jira Settings → Apps → Manage apps → Xray Reader → Configure**
+- **Jira Settings → Apps → Xray Reader settings** (sidebar), or
+- the app's **Configure** button in **Connected apps** (Atlassian
+  Administration) / **Manage apps**.
+
+The manifest has two `jira:adminPage` entries for the same page: one for the
+sidebar and one with `useAsConfig: true` for the Configure button. An entry with
+`useAsConfig` is not shown in the sidebar, so both are needed.
+
+After deploying, hard refresh Jira settings (Ctrl + F5); the sidebar keeps its
+old list of apps until the page is reloaded.
 
 On the page you can:
 
