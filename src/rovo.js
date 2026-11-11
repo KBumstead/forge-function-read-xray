@@ -99,7 +99,7 @@ async function rovoReadXray(payload, getClient) {
   }
 
   try {
-    const result = await readXray(getClient(), {
+    const result = await readXray(await getClient(), {
       type,
       key,
       jql: key ? undefined : jql,

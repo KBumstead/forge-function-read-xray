@@ -41,6 +41,10 @@ npx forge login
 npx forge register
 ```
 
+You can enter the Xray Client ID and Secret in two ways: on the app's
+**settings page in Jira** after installing (see
+[Admin settings page](#admin-settings-page)), or as Forge variables:
+
 ```bash
 npx forge variables set --encrypt XRAY_CLIENT_ID <client-id>
 ```
@@ -171,6 +175,35 @@ Notes:
 - Using the tool from external MCP clients (outside Rovo) also needs a site
   admin to turn it on under **Connected apps** in Atlassian Administration.
 
+## Admin settings page
+
+Jira admins can manage the Xray credentials inside Jira, without the CLI:
+
+- **Jira Settings → Apps → Xray Reader settings**, or
+- **Jira Settings → Apps → Manage apps → Xray Reader → Configure**
+
+On the page you can:
+
+- Enter the **Client ID** and **Client Secret** and pick the **Xray region**.
+- Click **Test connection** to check the key works with Xray, without saving it.
+- Click **Save**. The Rovo tool and web trigger use the new key right away;
+  no redeploy is needed.
+- Click **Remove saved settings** to go back to the Forge variables.
+
+How it behaves:
+
+- Values saved on the page win over the `XRAY_*` Forge variables. If nothing is
+  saved on the page, the variables are used, so existing setups keep working.
+- The secret is stored with Forge's encrypted secret storage and is never shown
+  again. Leave the secret field blank to keep the saved one while changing the
+  Client ID or region.
+- Only Jira administrators can open the page, and the backend checks admin
+  permission again on every call.
+- `WEBTRIGGER_SECRET` is still set with `forge variables set`.
+
+This adds the `storage:app` permission, so after deploying, upgrade the
+install (`npx forge install --upgrade ...`) and accept the new permission.
+
 ## Using the reader from other Forge modules
 
 `src/xrayClient.js` and `src/readXray.js` don't depend on the web trigger. You can
@@ -179,7 +212,7 @@ call them from a resolver, scheduled trigger, Rovo action and so on:
 ```js
 const { getClient, readXray } = require('./index');
 
-const runs = await readXray(getClient(), { type: 'testExecutions', key: 'ABC-42' });
+const runs = await readXray(await getClient(), { type: 'testExecutions', key: 'ABC-42' });
 ```
 
 ## Development
@@ -195,8 +228,11 @@ npx forge tunnel
 ## Project layout
 
 ```
-manifest.yml          Forge modules (web trigger, Rovo action, rovo:mcp), Xray egress
-src/index.js          Web trigger + Rovo handlers
+manifest.yml          Forge modules (web trigger, Rovo action, rovo:mcp, admin page), Xray egress
+src/index.js          Web trigger, Rovo and settings page handlers
+src/config.js         Credentials: settings page storage first, then Forge variables
+src/settings.js       Settings page backend (admin check, save, test connection)
+src/frontend/         Settings page UI (UI Kit)
 src/rovo.js           Rovo tool: input handling, trims results for Rovo
 src/readXray.js       Reads by type / jql / key, checks the input
 src/xrayClient.js     Xray Cloud auth (token cached) + GraphQL queries

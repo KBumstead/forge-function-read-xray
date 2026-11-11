@@ -6,6 +6,9 @@ modules:
     # Rovo entry point.
     - key: read-xray-rovo
       handler: index.rovoHandler
+    # Backend for the Jira admin settings page.
+    - key: settings-resolver
+      handler: index.settingsHandler
 
   webtrigger:
     - key: read-xray-webtrigger
@@ -61,6 +64,21 @@ modules:
       tools:
         - read-xray-data
 
+  # Settings page under Jira Settings > Apps. useAsConfig also adds a
+  # "Configure" button for the app on the Manage apps page.
+  jira:adminPage:
+    - key: xray-reader-settings
+      title: Xray Reader settings
+      resource: settings-page
+      resolver:
+        function: settings-resolver
+      render: native
+      useAsConfig: true
+
+resources:
+  - key: settings-page
+    path: src/frontend/index.jsx
+
 app:
   id: ari:cloud:ecosystem::app/ece8b991-1555-40b5-8344-59421436d8e6
   runtime:
@@ -69,6 +87,8 @@ app:
 permissions:
   scopes:
     - read:jira-work
+    # Stores the Xray credentials saved on the settings page (secret encrypted).
+    - storage:app
   external:
     fetch:
       backend:
