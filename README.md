@@ -77,6 +77,28 @@ npx forge install --product jira --site yourcompany-nprd.atlassian.net
 Variables are set per Forge environment (`development` by default). Add
 `-e staging` or `-e production` to the commands above if you deploy elsewhere.
 
+### Updating after code changes
+
+`forge install` only installs the version you last deployed, so after any
+change (for example, pulling the Rovo tool) you must **deploy first**, then
+upgrade the existing install:
+
+```bash
+npx forge deploy
+```
+
+```bash
+npx forge install --upgrade --product jira --site yourcompany-nprd.atlassian.net
+```
+
+Forge sometimes updates existing installs automatically after a deploy, but not
+always when modules or permissions are added. Running `--upgrade` is harmless
+if the install is already up to date.
+
+- Variables you already set (`XRAY_CLIENT_ID`, `XRAY_CLIENT_SECRET`, ...) carry
+  over between deploys; no need to set them again.
+- `npx forge register` is only needed once, before the very first deploy.
+
 ### 3. Get the web trigger URL
 
 ```bash
