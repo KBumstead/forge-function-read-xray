@@ -9,8 +9,7 @@ modules:
       function: read-xray
 
 app:
-  # Replaced by `forge register` with your real app id.
-  id: ari:cloud:ecosystem::app/00000000-0000-0000-0000-000000000000
+  id: ari:cloud:ecosystem::app/ece8b991-1555-40b5-8344-59421436d8e6
   runtime:
     name: nodejs22.x
 
