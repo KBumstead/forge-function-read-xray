@@ -93,7 +93,7 @@ permissions:
     fetch:
       backend:
         # Xray Cloud API (global + regional endpoints).
-        - https://xray.cloud.getxray.app
-        - https://us.xray.cloud.getxray.app
-        - https://eu.xray.cloud.getxray.app
-        - https://au.xray.cloud.getxray.app
+        - address: https://xray.cloud.getxray.app
+        - address: https://us.xray.cloud.getxray.app
+        - address: https://eu.xray.cloud.getxray.app
+        - address: https://au.xray.cloud.getxray.app
