@@ -1,18 +1,31 @@
-const { fetch } = require('@forge/api');
-const { XrayClient, XrayError, DEFAULT_BASE_URL } = require('./xrayClient');
+const api = require('@forge/api');
+const { kvs } = require('@forge/kvs');
+const Resolver = require('@forge/resolver').default;
+const { XrayClient, XrayError } = require('./xrayClient');
 const { readXray } = require('./readXray');
 const { rovoReadXray } = require('./rovo');
+const { loadConfig } = require('./config');
+const { createSettingsHandlers } = require('./settings');
 
 let client;
+let clientFingerprint;
 
-function getClient() {
-  if (!client) {
+/**
+ * Returns an Xray client for the credentials currently in effect (admin
+ * settings page first, then Forge variables). Rebuilt when they change, so a
+ * new key saved on the settings page applies without a redeploy.
+ */
+async function getClient() {
+  const config = await loadConfig(kvs);
+  const fingerprint = `${config.clientId}|${config.clientSecret}|${config.baseUrl}`;
+  if (!client || fingerprint !== clientFingerprint) {
     client = new XrayClient({
-      clientId: process.env.XRAY_CLIENT_ID,
-      clientSecret: process.env.XRAY_CLIENT_SECRET,
-      baseUrl: process.env.XRAY_BASE_URL || DEFAULT_BASE_URL,
-      fetch,
+      clientId: config.clientId,
+      clientSecret: config.clientSecret,
+      baseUrl: config.baseUrl,
+      fetch: api.fetch,
     });
+    clientFingerprint = fingerprint;
   }
   return client;
 }
@@ -71,7 +84,7 @@ async function handler(event) {
       };
     }
 
-    const data = await readXray(getClient(), params);
+    const data = await readXray(await getClient(), params);
     return respond(200, data);
   } catch (err) {
     console.error('read-xray failed', err.message, err.details || '');
@@ -88,4 +101,12 @@ async function rovoHandler(payload) {
   return rovoReadXray(payload, getClient);
 }
 
-module.exports = { handler, rovoHandler, readXray, getClient };
+/** Resolver for the Jira admin settings page. */
+const settingsResolver = new Resolver();
+const settingsHandlers = createSettingsHandlers({ api, kvs, fetch: api.fetch });
+for (const [name, fn] of Object.entries(settingsHandlers)) {
+  settingsResolver.define(name, fn);
+}
+const settingsHandler = settingsResolver.getDefinitions();
+
+module.exports = { handler, rovoHandler, settingsHandler, readXray, getClient };
