@@ -163,8 +163,19 @@ Then ask the agent things like:
 Tool inputs (all optional): `type` (`tests`, `testExecutions`, `testPlans`,
 `testSets`), `key`, `jql`, `limit` (default 10 for Rovo), `start`. If neither
 `key` nor `jql` is given and the user is on a Jira issue, that issue is used.
-Results are trimmed to the useful fields (key, summary, status, steps, run
-statuses with per-status counts) so Rovo can summarize them.
+
+**Just pass the issue key.** With a `key` and no `type`, the tool works out what
+the issue is: a Test, Test Execution, Test Plan or Test Set, or otherwise
+(for example a story) the Xray Tests linked to it. `matchedAs` in the result
+says which.
+
+**Tests include their test runs.** Test runs belong to Test Executions, not to
+the Test issue, so for each Test the tool also looks up the executions it is in
+and returns `testRuns` (execution key, environments, status, dates, comment),
+`latestRunStatus` (or `NO RUNS`) and `runStatusCounts`.
+
+`jiraStatus` is the issue's Jira workflow status (Backlog, Done, ...). It is
+not a test result; the result's `note` says this so Rovo doesn't mix them up.
 
 Notes:
 

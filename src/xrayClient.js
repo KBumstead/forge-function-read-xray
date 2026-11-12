@@ -14,6 +14,8 @@ const DEFAULT_BASE_URL = 'https://xray.cloud.getxray.app';
 const TOKEN_TTL_MS = 23 * 60 * 60 * 1000;
 // Xray GraphQL caps list queries at 100 results per page.
 const MAX_LIMIT = 100;
+// Executions looked up when attaching runs to tests (keeps queries small).
+const MAX_RUN_LOOKUP_EXECUTIONS = 50;
 
 class XrayError extends Error {
   constructor(message, status, details) {
@@ -101,10 +103,17 @@ class XrayClient {
     return json.data;
   }
 
-  /** Tests (with steps / gherkin / definition) matching a JQL query. */
-  async getTests({ jql, limit = 50, start = 0 }) {
+  /**
+   * Tests (with steps / gherkin / definition) matching a JQL query.
+   *
+   * With includeRuns (default), each test also gets `testRuns`: its run in
+   * every Test Execution it belongs to (execution key, environments, status).
+   * Test runs live on Test Executions, not on the Test issue itself, so they
+   * are fetched in a second query.
+   */
+  async getTests({ jql, limit = 50, start = 0, includeRuns = true, executionLimit = 10 }) {
     const data = await this.graphql(
-      `query GetTests($jql: String, $limit: Int!, $start: Int) {
+      `query GetTests($jql: String, $limit: Int!, $start: Int, $execLimit: Int!) {
         getTests(jql: $jql, limit: $limit, start: $start) {
           total
           start
@@ -117,12 +126,62 @@ class XrayClient {
             gherkin
             unstructured
             jira(fields: ["key", "summary", "status", "labels"])
+            testExecutions(limit: $execLimit) {
+              total
+              results { issueId }
+            }
           }
         }
       }`,
-      { jql, limit: clampLimit(limit), start }
+      { jql, limit: clampLimit(limit), start, execLimit: clampLimit(executionLimit) }
     );
-    return data.getTests;
+    const tests = data.getTests;
+    if (includeRuns) {
+      await this.attachTestRuns(tests.results || []);
+    }
+    return tests;
+  }
+
+  /** Adds `testRuns` to each test from the Test Executions it belongs to. */
+  async attachTestRuns(tests) {
+    const execIds = [
+      ...new Set(
+        tests.flatMap((t) =>
+          ((t.testExecutions && t.testExecutions.results) || []).map((e) => e.issueId)
+        )
+      ),
+    ].slice(0, MAX_RUN_LOOKUP_EXECUTIONS);
+
+    if (!execIds.length) {
+      tests.forEach((t) => (t.testRuns = []));
+      return;
+    }
+
+    // Jira JQL accepts numeric issue ids: issue in (10001, 10002)
+    const execs = await this.getTestExecutions({
+      jql: `issue in (${execIds.map((id) => Number(id)).filter(Number.isFinite).join(', ')})`,
+      limit: execIds.length,
+      runLimit: MAX_LIMIT,
+    });
+
+    for (const t of tests) {
+      t.testRuns = [];
+      for (const e of execs.results || []) {
+        const runs = (e.testRuns && e.testRuns.results) || [];
+        for (const r of runs) {
+          if (r.test && String(r.test.issueId) === String(t.issueId)) {
+            t.testRuns.push({
+              ...r,
+              testExecution: {
+                issueId: e.issueId,
+                testEnvironments: e.testEnvironments,
+                jira: e.jira,
+              },
+            });
+          }
+        }
+      }
+    }
   }
 
   /** Test Executions and their Test Runs (status per test). */

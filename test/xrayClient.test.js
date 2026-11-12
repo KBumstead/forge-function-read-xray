@@ -26,6 +26,7 @@ test('authenticates once and reuses the token', async () => {
     { status: 200, body: { data: { getTests: { total: 0, results: [] } } } },
     { status: 200, body: { data: { getTests: { total: 0, results: [] } } } },
   ]);
+  // (no tests returned -> no second query for runs)
   const client = new XrayClient({ ...creds, fetch });
 
   await client.getTests({ jql: 'project = ABC' });
@@ -87,4 +88,68 @@ test('readXray builds jql from key and validates input', async () => {
   await assert.rejects(readXray(client, { type: 'nope', jql: 'x' }), /Unknown type/);
   await assert.rejects(readXray(client, { type: 'tests' }), /Provide either/);
   await assert.rejects(readXray(client, { key: 'ABC-1 OR 1=1' }), /Invalid issue key/);
+});
+
+test('getTests attaches each test\'s runs from its Test Executions', async () => {
+  const fetch = mockFetch([
+    { status: 200, body: '"t"' },
+    {
+      status: 200,
+      body: {
+        data: {
+          getTests: {
+            total: 2,
+            results: [
+              { issueId: '100', jira: { key: 'GTP-38660' }, testExecutions: { total: 1, results: [{ issueId: '200' }] } },
+              { issueId: '101', jira: { key: 'GTP-38661' }, testExecutions: { total: 0, results: [] } },
+            ],
+          },
+        },
+      },
+    },
+    {
+      status: 200,
+      body: {
+        data: {
+          getTestExecutions: {
+            total: 1,
+            results: [
+              {
+                issueId: '200',
+                testEnvironments: ['UAT'],
+                jira: { key: 'GTP-38659', summary: 'UAT run' },
+                testRuns: {
+                  total: 2,
+                  results: [
+                    { id: 'r1', status: { name: 'FAILED' }, test: { issueId: '100' } },
+                    { id: 'r2', status: { name: 'PASSED' }, test: { issueId: '999' } },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  ]);
+  const client = new XrayClient({ ...creds, fetch });
+  const out = await client.getTests({ jql: 'key = GTP-38660' });
+
+  const runsQuery = JSON.parse(fetch.calls[2].init.body);
+  assert.strictEqual(runsQuery.variables.jql, 'issue in (200)');
+  assert.strictEqual(out.results[0].testRuns.length, 1);
+  assert.strictEqual(out.results[0].testRuns[0].id, 'r1');
+  assert.strictEqual(out.results[0].testRuns[0].testExecution.jira.key, 'GTP-38659');
+  assert.deepStrictEqual(out.results[0].testRuns[0].testExecution.testEnvironments, ['UAT']);
+  assert.deepStrictEqual(out.results[1].testRuns, []);
+});
+
+test('getTests skips the run lookup when asked', async () => {
+  const fetch = mockFetch([
+    { status: 200, body: '"t"' },
+    { status: 200, body: { data: { getTests: { total: 1, results: [{ issueId: '1', testExecutions: { results: [{ issueId: '2' }] } }] } } } },
+  ]);
+  const client = new XrayClient({ ...creds, fetch });
+  await client.getTests({ jql: 'x', includeRuns: false });
+  assert.strictEqual(fetch.calls.length, 2);
 });

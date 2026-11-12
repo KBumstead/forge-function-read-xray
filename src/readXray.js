@@ -7,6 +7,10 @@ const READERS = {
   testSets: (client, p) => client.getTestSets(p),
 };
 
+function isValidIssueKey(key) {
+  return /^[A-Z][A-Z0-9_]+-\d+$/i.test(String(key));
+}
+
 /**
  * Reads Xray data of the requested type.
  *
@@ -30,7 +34,7 @@ async function readXray(client, params = {}) {
 
   let jql = params.jql;
   if (params.key) {
-    if (!/^[A-Z][A-Z0-9_]+-\d+$/i.test(params.key)) {
+    if (!isValidIssueKey(params.key)) {
       throw new XrayError(`Invalid issue key "${params.key}"`, 400);
     }
     jql = `key = ${params.key}`;
@@ -46,4 +50,4 @@ async function readXray(client, params = {}) {
   return reader(client, query);
 }
 
-module.exports = { readXray, READERS };
+module.exports = { readXray, READERS, isValidIssueKey };
