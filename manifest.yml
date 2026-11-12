@@ -23,18 +23,20 @@ modules:
       function: read-xray-rovo
       actionVerb: GET
       description: >-
-        Reads Xray test data from Jira: tests (steps, Gherkin), test executions
-        with run status (pass/fail), test plans and test sets. Pass an issue key
-        or JQL; defaults to the current issue.
+        Reads Xray data: tests with their test run results (PASSED/FAILED)
+        per execution, test executions, plans and sets. Pass just an issue key
+        (story, test or execution) and the type is detected. jiraStatus is not
+        a test result.
       inputs:
         type:
           title: Data type
           type: string
           required: false
           description: >-
-            What to read. One of: tests, testExecutions, testPlans, testSets.
-            Default is tests. Use testExecutions for test run results or
-            pass/fail status, testPlans or testSets to list the tests they contain.
+            Optional. One of: tests, testExecutions, testPlans, testSets. Leave
+            empty with an issue key to detect it automatically: a Test, Test
+            Execution, Test Plan, Test Set, or else the Tests linked to the
+            issue (for example a story). Tests include their test runs.
         key:
           title: Issue key
           type: string
