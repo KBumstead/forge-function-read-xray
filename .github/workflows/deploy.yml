@@ -1,0 +1,97 @@
+name: Test and deploy Forge app
+
+# Runs the tests and deploys the app to Forge on every merge (push) to main.
+# Can also be started by hand from the Actions tab; tick "Upgrade the
+# installation" when a change adds permissions (scopes, egress) or modules
+# that need the install upgraded.
+#
+# Repository settings needed (Settings > Secrets and variables > Actions):
+#   Secrets:
+#     FORGE_EMAIL       Atlassian account email that owns the app
+#     FORGE_API_TOKEN   Atlassian API token for that account
+#                       (https://id.atlassian.com/manage-profile/security/api-tokens)
+#   Variables (optional):
+#     FORGE_ENVIRONMENT Forge environment to deploy to (default: development)
+#     FORGE_SITE        Jira site for upgrades, e.g. yourcompany-nprd.atlassian.net
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      upgrade_install:
+        description: Upgrade the installation after deploying (approves new permissions)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Never run two deploys at once; a newer one waits for the running one.
+concurrency:
+  group: forge-deploy
+  cancel-in-progress: false
+
+env:
+  FORGE_ENVIRONMENT: ${{ vars.FORGE_ENVIRONMENT || 'development' }}
+  FORGE_DISABLE_ANALYTICS: 'true'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      FORGE_EMAIL: ${{ secrets.FORGE_EMAIL }}
+      FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check Forge credentials are set
+        run: |
+          if [ -z "$FORGE_EMAIL" ] || [ -z "$FORGE_API_TOKEN" ]; then
+            echo "::error::Add the FORGE_EMAIL and FORGE_API_TOKEN repository secrets."
+            exit 1
+          fi
+
+      # Answer the CLI's one-time analytics question so it doesn't wait for input.
+      - name: Configure Forge CLI
+        run: npx forge settings set usage-analytics false
+
+      - name: Lint
+        run: npx forge lint
+
+      - name: Deploy
+        run: npx forge deploy --non-interactive -e "$FORGE_ENVIRONMENT"
+
+      - name: Upgrade installation
+        if: github.event_name == 'workflow_dispatch' && inputs.upgrade_install
+        env:
+          FORGE_SITE: ${{ vars.FORGE_SITE }}
+        run: |
+          if [ -z "$FORGE_SITE" ]; then
+            echo "::error::Set the FORGE_SITE repository variable (e.g. yourcompany-nprd.atlassian.net)."
+            exit 1
+          fi
+          npx forge install --upgrade --non-interactive --confirm-scopes \
+            -e "$FORGE_ENVIRONMENT" --product jira --site "$FORGE_SITE"

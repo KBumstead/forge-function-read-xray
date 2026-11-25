@@ -234,6 +234,29 @@ const { getClient, readXray } = require('./index');
 const runs = await readXray(await getClient(), { type: 'testExecutions', key: 'ABC-42' });
 ```
 
+## Automatic deploy (GitHub Actions)
+
+`.github/workflows/deploy.yml` runs the tests and then `forge lint` and
+`forge deploy` on every merge to `main`.
+
+One-time setup in GitHub (**Settings → Secrets and variables → Actions**):
+
+| Type | Name | Value |
+| --- | --- | --- |
+| Secret | `FORGE_EMAIL` | Email of the Atlassian account that owns the app |
+| Secret | `FORGE_API_TOKEN` | Atlassian API token for that account (id.atlassian.com → Security → API tokens) |
+| Variable (optional) | `FORGE_ENVIRONMENT` | Forge environment to deploy to; default `development` |
+| Variable (optional) | `FORGE_SITE` | Jira site to upgrade, e.g. `yourcompany-nprd.atlassian.net` |
+
+Code-only changes reach the site after the deploy. When a change adds
+permissions or modules, run the workflow by hand (**Actions → Test and deploy
+Forge app → Run workflow**) and tick **Upgrade the installation**. That
+approves the new permissions for you, so check the change first. This
+step needs `FORGE_SITE`.
+
+The Xray credentials are not part of the workflow: they stay in the app's
+settings page or the Forge variables, which carry over between deploys.
+
 ## Development
 
 ```bash
